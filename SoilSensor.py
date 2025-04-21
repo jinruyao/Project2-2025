@@ -1,6 +1,9 @@
+# SoilSensor.py
+# 
 # Name: Jinru Yao
 # Student Number: 20110012
-# Date: 16/4/2025
+# Course & Year: Project3 & Year3
+# Date: 20/4/2025
 
 # !/usr/bin/python
 import RPi.GPIO as GPIO
