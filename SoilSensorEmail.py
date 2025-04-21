@@ -5,17 +5,11 @@
 # Course & Year: Project3 & Year3
 # Date: 20/4/2025
 
-import RPi.GPIO as GPIO
-import time
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 import pytz  # Import the pytz library
-
-# GPIO setup
-channel = 4
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(channel, GPIO.IN)
+import time
 
 # Email setup
 from_email_addr = "917545827@qq.com"
@@ -29,13 +23,13 @@ beijing_tz = pytz.timezone('Asia/Shanghai')
 msg = EmailMessage()
 
 # Function to send email with the plant status
-
-def send_email(plant_status, email_number):
+def send_email(plant_status, email_number, water_detected):
     current_time = datetime.now(beijing_tz).strftime("%Y-%m-%d %H:%M:%S")
     email_body = (
         f"Date and Time: {current_time}\n"
         f"Email Number Today: {email_number}\n"
         f"Plant Status: {plant_status}\n\n"
+        f"Water Detected: {'Yes' if water_detected else 'No'}\n\n"
         "This is an automated notification from your Raspberry Pi Plant Monitoring System.\n"
         "Keep taking good care of your plant!"
     )
@@ -57,42 +51,47 @@ def send_email(plant_status, email_number):
 
 # Function to check the moisture level and determine the plant's watering need
 def check_moisture():
-    if GPIO.input(channel):
-        print("Water not detected!")
-        return "Please water your plant!"
-    else:
+    water_detected = True  # Simulating water detection (change to False to test no water)
+    if water_detected:
         print("Water detected!")
-        return "Water NOT needed"
+        return "Water NOT needed", water_detected
+    else:
+        print("Water not detected!")
+        return "Please water your plant!", water_detected
 
 # Function to calculate the next send time based on the current time (Beijing time)
-def get_next_send_time(start_hour=7, interval_hours=3):
+def get_next_send_time(start_hour=8, interval_hours=3):
     now = datetime.now(beijing_tz)
     target_time = now.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+   
+    # If the current time is already past the start time, calculate the next available time
     if now > target_time:
+        # Find the next time after the current time that is a multiple of the interval (3 hours)
         hours_to_next_send = ((now.hour - start_hour) // interval_hours + 1) * interval_hours
         target_time += timedelta(hours=hours_to_next_send)
+   
     return target_time
 
-# Main loop to take 4 readings each day at regular intervals (every 3 hours)
+# Main loop to send 5 emails starting from 8 AM at 3-hour intervals
 def main():
-    next_send_time = get_next_send_time()
-    for i in range(4):
+    # Get the start time (first email time)
+    next_send_time = get_next_send_time(start_hour=8, interval_hours=3)
+
+    # Send 5 emails at 3-hour intervals
+    for i in range(5):  # Sending 5 emails per day
         time_to_wait = (next_send_time - datetime.now(beijing_tz)).total_seconds()
         if time_to_wait > 0:
             print(f"Waiting until {next_send_time} (Beijing Time) for the next email...")
-            time.sleep(time_to_wait)
+            time.sleep(time_to_wait)  # Wait until it's time to send the email
 
-        plant_status = check_moisture()
-        send_email(plant_status, i + 1)
+        # Check the moisture and send an email
+        plant_status, water_detected = check_moisture()
+        send_email(plant_status, i + 1, water_detected)
+
+        # Update the next send time by adding the interval (3 hours)
         next_send_time += timedelta(hours=3)
-
-# Run the main function for 3 days
-def run_for_three_days():
-    for day in range(3):
-        print(f"Day {day+1} - Starting moisture checks")
-        main()
-        print(f"Day {day+1} - Completed moisture checks")
 
 # Start the program
 if __name__ == "__main__":
-    run_for_three_days()
+    main()
+
